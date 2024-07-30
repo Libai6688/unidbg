@@ -30,6 +30,7 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 public class DalvikVM64 extends BaseVM implements VM {
@@ -523,11 +524,30 @@ public class DalvikVM64 extends BaseVM implements VM {
                 if (log.isDebugEnabled()) {
                     log.debug("CallObjectMethod object=" + object + ", jmethodID=" + jmethodID);
                 }
+                log.info("CallObjectMethod object=" + object + ", jmethodID=" + jmethodID);
                 DvmObject<?> dvmObject = getObject(object.toIntPeer());
                 DvmClass dvmClass = dvmObject == null ? null : dvmObject.getObjectType();
-                DvmMethod dvmMethod = dvmClass == null ? null : dvmClass.getMethod(jmethodID.toIntPeer());
+                int jmethodIdInt = jmethodID.toIntPeer();
+                DvmMethod dvmMethod = dvmClass == null ? null : dvmClass.getMethod(jmethodIdInt);
+                if (dvmMethod == null) {
+                    System.out.println("joobih 继续从父类中查找");
+                    for (Map.Entry<Integer, DvmClass> entry : classMap.entrySet()) {
+                        DvmClass c = entry.getValue();
+                        if (c.getClassName().equals("android/content/Context") && dvmClass.getClassName().equals("com/taobao/trip/TripApplication")) {
+                            dvmMethod = c.getMethod(jmethodIdInt);
+                            System.out.println("find supClass method:" + dvmMethod);
+                            break;
+                        }
+                        if (c.getClassName().equals("java/lang/ClassLoader") && dvmClass.getClassName().equals("dalvik/system/PathClassLoader")) {
+                            dvmMethod = c.getMethod(jmethodIdInt);
+                            System.out.println("find supClass method" + dvmMethod);
+                            break;
+                        }
+                    }
+                }
                 if (dvmMethod == null) {
                     throw new BackendException();
+
                 } else {
                     VarArg varArg = ArmVarArg.create(emulator, DalvikVM64.this, dvmMethod);
                     DvmObject<?> ret = dvmMethod.callObjectMethod(dvmObject, varArg);
@@ -551,7 +571,20 @@ public class DalvikVM64 extends BaseVM implements VM {
                 }
                 DvmObject<?> dvmObject = getObject(object.toIntPeer());
                 DvmClass dvmClass = dvmObject == null ? null : dvmObject.getObjectType();
+                int jmethodIdInt= jmethodID.toIntPeer();
                 DvmMethod dvmMethod = dvmClass == null ? null : dvmClass.getMethod(jmethodID.toIntPeer());
+                if (dvmMethod == null) {
+                    System.out.println("_CallObjectMethodV joobih 继续从父类中查找");
+                    for (Map.Entry<Integer, DvmClass> entry : classMap.entrySet()) {
+                        DvmClass c = entry.getValue();
+                        if (c.getClassName().equals("java/lang/ClassLoader") && dvmClass.getClassName().equals("dalvik/system/PathClassLoader")) {
+                            dvmMethod = c.getMethod(jmethodIdInt);
+                            System.out.println("find supClass method" + dvmMethod);
+                            break;
+                        }
+                    }
+                }
+
                 if (dvmMethod == null) {
                     throw new BackendException("dvmObject=" + dvmObject + ", dvmClass=" + dvmClass + ", jmethodID=" + jmethodID);
                 } else {
